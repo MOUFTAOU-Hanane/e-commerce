@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Ramsey\Uuid\Uuid;
+use App\Models\Product;
+use App\Models\Category;
+use App\Models\Cart;
+use App\Models\Comment;
 
 class EcommerceController extends Controller
 {
@@ -158,10 +162,12 @@ class EcommerceController extends Controller
             $user =  $rData['user'];
 
 
-            $products = Cart::where('user',$user)->where('is_paid', false)->with('product')->get();
-            if ($products ->isEmpty()){
+            $productsInCart = Cart::where('user',$user)->where('is_paid', false)->with('product')->get();
+            if ($productsInCart ->isEmpty()){
                 return [];
             }
+
+            $products = $productsInCart->pluck('product');
 
 
             return response()->json([
@@ -249,10 +255,12 @@ class EcommerceController extends Controller
             $user =  $rData['user'];
 
 
-            $products = Cart::where('user',$user)->where('is_paid', true)->with('product')->get();
-            if ($products ->isEmpty()){
+            $productsInCart = Cart::where('user',$user)->where('is_paid', true)->with('product')->get();
+            if ($productsInCart ->isEmpty()){
                 return [];
             }
+            $products = $productsInCart->pluck('product');
+
 
 
             return response()->json([
@@ -327,18 +335,17 @@ class EcommerceController extends Controller
             log::error($ex->getMessage());
             return response()->json(
                 [
-                    "message"=> "Une erreur est survenue lors de la suppression  du produit. Veuillez réessayer",
+                    "message"=> "Une erreur est survenue. Veuillez réessayer",
                 ],400
                 );
         }
     }
 
-    public function updatedCategory(Request $request){
+    public function detailProduct(Request $request){
         try{
             $rData=$request->only(['id']);
             $validator=[
-                'id'=> ['required','exists:categories,id'],
-                'name'=> ['required'],
+                'id'=> ['required','exists:products,id'],
             ];
             $validationMessages = [
                 'id.required' => "La reference du produit est requise",
@@ -353,19 +360,17 @@ class EcommerceController extends Controller
             $id =  $rData['id'];
 
 
-            $categoryFound = Category::where('id',$id)->first();
-            $categoryFound->name =$rData['name'];
+            $productFound = Product::where('id',$id)->with('category', 'comments')->get();
 
             return response()->json([
-                "success" => true,
-                "message" => "La catégorie du produit a été modifié avec succès.",
-            ], 201);
+                $productFound
+            ], 200);
 
         }catch(Exception $ex){
             log::error($ex->getMessage());
             return response()->json(
                 [
-                    "message"=> "Une erreur est survenue lors de la modification de la catégorie  du produit. Veuillez réessayer",
+                    "message"=> "Une erreur est survenue. Veuillez réessayer",
                 ],400
                 );
         }

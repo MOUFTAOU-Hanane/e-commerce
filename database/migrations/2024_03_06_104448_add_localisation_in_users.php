@@ -11,10 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('categories', function (Blueprint $table) {
-            $table->string('id')->unique();
-            $table->string('name');
-            $table->timestamps();
+        if(!Schema::hasColumn("users","localisation"))
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('localisation');
         });
     }
 
@@ -23,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::table('users', function (Blueprint $table) {
+            //
+        });
     }
 };

@@ -11,42 +11,47 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Class User
+ * Class Product
  * 
  * @property string $id
- * @property string $first_name
- * @property string $last_name
- * @property string $password
- * @property string $email
- * @property string $phone_number
- * @property string $role
+ * @property string $category_id
+ * @property string $name
+ * @property string $images
+ * @property string $description
+ * @property int $in_stock
+ * @property int $available_stock
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property string $localisation
  * 
+ * @property Category $category
  * @property Collection|Cart[] $carts
  * @property Collection|Comment[] $comments
  *
  * @package App\Models
  */
-class User extends Model
+class Product extends Model
 {
-	protected $table = 'users';
+	protected $table = 'products';
 	public $incrementing = false;
 
-	protected $hidden = [
-		'password'
+	protected $casts = [
+		'in_stock' => 'int',
+		'available_stock' => 'int'
 	];
 
 	protected $fillable = [
-		'first_name',
-		'last_name',
-		'password',
-		'email',
-		'phone_number',
-		'role',
-		'localisation'
+		'category_id',
+		'name',
+		'images',
+		'description',
+		'in_stock',
+		'available_stock'
 	];
+
+	public function category()
+	{
+		return $this->belongsTo(Category::class);
+	}
 
 	public function carts()
 	{

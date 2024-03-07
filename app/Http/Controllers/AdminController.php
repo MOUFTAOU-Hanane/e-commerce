@@ -1,6 +1,5 @@
 <?php
 namespace App\Http\Controllers;
-
 use App\Services\FileService;
 use Illuminate\Support\Facades\Validator;
 use Exception;
@@ -8,14 +7,17 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Ramsey\Uuid\Uuid;
-
+use App\Models\Product;
+use App\Models\Category;
+use App\Models\User;
 
 class AdminController extends Controller
 {
     public function addProduct(Request $request){
         try{
-            $rData=$request->only(['name', 'category','price', 'description',"number_in_stock",'images']);
+            $rData=$request->only(["users",'name', 'category','price', 'description',"number_in_stock",'images']);
             $validator=[
+                'user' => ['required','exists:users,id'],
                 'name' => ['required'],
                 'price' => ['required'],
                 'category' => ['required', 'exists:categories,id'],
@@ -23,6 +25,7 @@ class AdminController extends Controller
                 'number_in_stock' => ['required','min:8'],
             ];
             $validationMessages = [
+
                 'name.required' => "Le nom de produit est requis",
                 'price.required' => "Le prix  du produit est est requis",
                 'category.required' => "La catégorie du produit est requis",
@@ -37,39 +40,49 @@ class AdminController extends Controller
                     'message' => $validatorResult->errors()->first(),
                 ], 400);
             }
+            $user =  $rData['user'];
             $name =  $rData['name'];
             $price =  $rData['price'];
             $category =  $rData['category'];
             $desc =  $rData['description'];
             $number =  $rData['number_in_stock'];
+            $userFound = User::where("id",$user)->first();
 
-            $product = new Product();
-            $product->name =  $name ;
-            $product->price =  $price ;
-            $product->category =  $category ;
-            $product->description =  $desc ;
-            $product->number_in_stock =  $number ;
-            $product->number =  $number ;
-            $product->id = Uuid::uuid4()->toString();
+            if($userFound -> role == 'admin'){
+                $product = new Product();
+                $product->name =  $name ;
+                $product->price =  $price ;
+                $product->category =  $category ;
+                $product->description =  $desc ;
+                $product->in_stock =  $number ;
+                $product->number =  $number ;
+                $product->id = Uuid::uuid4()->toString();
 
 
-            if ($request->hasFile('images')) {
-                $images = [];
-                foreach($request->file('images') as $imageFile){
-                    $image = new FileService();
-                    $image->saveImage($imageFile);
-                    $images[] = $image;
+                if ($request->hasFile('images')) {
+                    $images = [];
+                    foreach($request->file('images') as $imageFile){
+                        $image = new FileService();
+                        $image->saveImage($imageFile);
+                        $images[] = $image;
 
-                } };
+                    } };
 
-            $product->images =  json_encode($images) ;
+                $product->images =  json_encode($images) ;
 
-            $product->save();
+                $product->save();
+
+                return response()->json([
+                    "success" => true,
+                    "message" => "Le produIct a été enregistré avec succès.",
+                ], 201);
+
+                }
+
 
             return response()->json([
-                "success" => true,
-                "message" => "Le product a été enregistré avec succès.",
-            ], 201);
+                "message" => "Vous n'avez pas de droit pour effectuer cette action",
+            ],401 );
 
         }catch(Exception $ex){
             log::error($ex->getMessage());
@@ -84,16 +97,18 @@ class AdminController extends Controller
 
     public function updateProduct(Request $request){
         try{
-            $rData=$request->only(['id','name', 'category','price', 'description',"number_in_stock",'images']);
+            $rData=$request->only(['id','name', 'category','price', 'description',"number_in_stock",'images','user']);
             $validator=[
                 'id'=> ['required','exists:products,id'],
                 'name' => ['required'],
+                'user' => ['required'],
                 'price' => ['required'],
                 'category' => ['required', 'exists:categories,id'],
                 'description' => ['required'],
                 'number_in_stock' => ['required','min:8'],
             ];
             $validationMessages = [
+                'user.required' => "La reference de l'utilisateur est requise",
                 'name.required' => "Le nom de produit est requis",
                 'price.required' => "Le prix  du produit est est requis",
                 'category.required' => "La catégorie du produit est requis",
@@ -115,34 +130,44 @@ class AdminController extends Controller
             $number =  $rData['number_in_stock'];
             $id =  $rData['id'];
 
+            $userFound = User::where("id",$id)->first();
+            if($userFound -> role == 'admin'){
 
-            $product = Product::where('id',$id)->first();
-            $product->name =  $name ;
-            $product->price =  $price ;
-            $product->category =  $category ;
-            $product->description =  $desc ;
-            $product->number_in_stock =  $number ;
-            $product->number =  $number ;
-            $product->id = Uuid::uuid4()->toString();
+                $product = Product::where('id',$id)->first();
+                $product->name =  $name ;
+                $product->price =  $price ;
+                $product->category =  $category ;
+                $product->description =  $desc ;
+                $product->number_in_stock =  $number ;
+                $product->number =  $number ;
+                $product->id = Uuid::uuid4()->toString();
 
 
-            if ($request->hasFile('images')) {
-                $images = [];
-                foreach($request->file('images') as $imageFile){
-                    $image = new FileService();
-                    $image->saveImage($imageFile);
-                    $images[] = $image;
+                if ($request->hasFile('images')) {
+                    $images = [];
+                    foreach($request->file('images') as $imageFile){
+                        $image = new FileService();
+                        $image->saveImage($imageFile);
+                        $images[] = $image;
 
-                } };
+                    } };
 
-            $product->images =  json_encode($images) ;
+                $product->images =  json_encode($images) ;
 
-            $product->save();
+                $product->save();
 
-            return response()->json([
-                "success" => true,
-                "message" => "Le product a été modifié avec succès.",
-            ], 201);
+                return response()->json([
+                    "success" => true,
+                    "message" => "Le produit a été modifié avec succès.",
+                ], 201);
+
+                }
+                else{
+                    return response()->json([
+                        "message" => "Vous n'avez pas de droit pour effectuer cette action",
+                    ],401 );
+
+                    }
 
         }catch(Exception $ex){
             log::error($ex->getMessage());
@@ -154,14 +179,17 @@ class AdminController extends Controller
         }
     }
 
-    public function deletedProduct(Request $request){
+    public function deleteProduct(Request $request){
         try{
             $rData=$request->only(['id']);
             $validator=[
+                'user'=> ['required','exists:users,id'],
                 'id'=> ['required','exists:products,id'],
             ];
             $validationMessages = [
                 'id.required' => "La reference du produit est requise",
+                'user.required' => "La reference de l'utilisateur est requise",
+
             ];
             $validatorResult=Validator::make( $rData, $validator, $validationMessages);
 
@@ -171,16 +199,22 @@ class AdminController extends Controller
                 ], 400);
             }
             $id =  $rData['id'];
+            $user =  $rData['user'];
+            $userFound = User::where("id",$user)->first();
 
+            if($userFound -> role == 'admin'){
+                Product::where('id',$id)->delete();
+                return response()->json([
+                    "success" => true,
+                    "message" => "Le product a été supprimé avec succès.",
+                ], 201);
+            }
+            else{
+                return response()->json([
+                    "message" => "Vous n'avez pas de droit pour effectuer cette action",
+                ],401 );
 
-            $product = Product::where('id',$id)->delete();
-
-
-
-            return response()->json([
-                "success" => true,
-                "message" => "Le product a été supprimé avec succès.",
-            ], 201);
+                }
 
         }catch(Exception $ex){
             log::error($ex->getMessage());
@@ -195,12 +229,11 @@ class AdminController extends Controller
     public function getProduct(Request $request){
         try{
 
-
             $products = Product::with('category')->all();
 
-            return response()->json([
+            return response()->json(
                 $products
-            ], 201);
+            , 201);
 
         }catch(Exception $ex){
             log::error($ex->getMessage());
@@ -214,13 +247,15 @@ class AdminController extends Controller
 
     public function addCategory(Request $request){
         try{
-            $rData=$request->only(['id']);
+            $rData=$request->only(['name','user']);
             $validator=[
-                'id'=> ['required'],
-                'name'=> ['required'],
+                'name'=> ['required','unique:categories,name'],
+                'user'=> ['required'],
             ];
             $validationMessages = [
-                'name.required' => "Le nom dela categorie de produit est requis",
+                'name.required' => "Le nom de la catégorie de produit est requis",
+                'user.required' => "La reference de l'utilisateur est requise",
+
 
             ];
             $validatorResult=Validator::make( $rData, $validator, $validationMessages);
@@ -231,17 +266,29 @@ class AdminController extends Controller
                 ], 400);
             }
             $name =  $rData['name'];
+            $user =  $rData['user'];
 
 
-            $category =  new Category();
-            $category->id = Uuid::uuid4()->toString();
-            $category->name =$rData['name'];
-            $category->save();
+            $userFound = User::where("id",$user)->first();
+            if($userFound -> role == 'admin'){
 
-            return response()->json([
-                "success" => true,
-                "message" => "La catégorie du produit a été créeé avec succès.",
-            ], 201);
+                $category =  new Category();
+                $category->id = Uuid::uuid4()->toString();
+                $category->name =$name;
+                $category->save();
+
+                return response()->json([
+                    "success" => true,
+                    "message" => "La catégorie du produit a été crée avec succès.",
+                ], 201);
+            }
+            else{
+
+                return response()->json([
+                    "message" => "Vous n'avez pas de droit pour effectuer cette action",
+                ],401 );
+
+                }
 
         }catch(Exception $ex){
             log::error($ex->getMessage());
@@ -256,13 +303,11 @@ class AdminController extends Controller
 
     public function getCategory(Request $request){
         try{
+            $categories = Category::all();
 
-
-            $products = Category::all();
-
-            return response()->json([
-                $products
-            ], 201);
+            return response()->json(
+                $categories
+            , 201);
 
         }catch(Exception $ex){
             log::error($ex->getMessage());
@@ -275,15 +320,20 @@ class AdminController extends Controller
     }
 
 
-    public function deletedCategory(Request $request){
+    public function deleteCategory(Request $request){
         try{
-            $rData=$request->only(['id']);
+            $rData=$request->only(['id_category', 'user']);
             $validator=[
-                'id'=> ['required','exists:categories,id'],
+                'id_category'=> ['required','exists:categories,id'],
+                'user'=> ['required','exists:users,id'],
+
             ];
             $validationMessages = [
-                'id.required' => "La reference du produit est requise",
+                'id_category.required' => "La reference de la catégorie est requise",
+                'user.required' => "La reference de l'utilisateur est requise",
+
             ];
+            log::error($rData['user']);
             $validatorResult=Validator::make( $rData, $validator, $validationMessages);
 
             if ($validatorResult->fails()) {
@@ -291,18 +341,25 @@ class AdminController extends Controller
                     'message' => $validatorResult->errors()->first(),
                 ], 400);
             }
-            $id =  $rData['id'];
+            $id =  $rData['id_category'];
+            $user = $rData['user'];
 
+            $userFound = User::where("id",$user)->first();
+            if($userFound -> role == 'admin'){
+                Category::where('id',$id)->delete();
 
-            $cateegoryFound = Category::where('id',$id)->delete();
+                return response()->json([
+                        "success" => true,
+                        "message" => "La catégorie du produit a été supprimé avec succès.",
+                ], 200);
+            }
+            else{
 
+                return response()->json([
+                        "message" => "Vous n'avez pas de droit pour effectuer cette action",
+                ],401 );
 
-
-            return response()->json([
-                "success" => true,
-                "message" => "La catégorie du produit a été supprimé avec succès.",
-            ], 201);
-
+            }
         }catch(Exception $ex){
             log::error($ex->getMessage());
             return response()->json(
@@ -313,15 +370,16 @@ class AdminController extends Controller
         }
     }
 
-    public function updatedCategory(Request $request){
+    public function updateCategory(Request $request){
         try{
-            $rData=$request->only(['id']);
+            $rData=$request->only(['id_category','name','user']);
             $validator=[
-                'id'=> ['required','exists:categories,id'],
+                'id_category'=> ['required','exists:categories,id'],
                 'name'=> ['required'],
+                'user'=> ['required','exists:users,id'],
             ];
             $validationMessages = [
-                'id.required' => "La reference du produit est requise",
+                'id_category.required' => "La reference de la catégorie est requise",
             ];
             $validatorResult=Validator::make( $rData, $validator, $validationMessages);
 
@@ -330,16 +388,26 @@ class AdminController extends Controller
                     'message' => $validatorResult->errors()->first(),
                 ], 400);
             }
-            $id =  $rData['id'];
+            $id =  $rData['id_category'];
+            $user =  $rData['user'];
+            $userFound = User::where("id",$user)->first();
+            if($userFound -> role == 'admin'){
+                $categoryFound = Category::where('id',$id)->first();
+                $categoryFound->name =$rData['name'];
+                $categoryFound->save();
 
+                return response()->json([
+                    "success" => true,
+                    "message" => "La catégorie du produit a été modifié avec succès.",
+                ], 201);
+            }
+            else{
 
-            $categoryFound = Category::where('id',$id)->first();
-            $categoryFound->name =$rData['name'];
+                return response()->json([
+                        "message" => "Vous n'avez pas de droit pour effectuer cette action",
+                ],401 );
 
-            return response()->json([
-                "success" => true,
-                "message" => "La catégorie du produit a été modifié avec succès.",
-            ], 201);
+            }
 
         }catch(Exception $ex){
             log::error($ex->getMessage());
@@ -350,12 +418,6 @@ class AdminController extends Controller
                 );
         }
     }
-
-
-
-
-
-
 
 }
 

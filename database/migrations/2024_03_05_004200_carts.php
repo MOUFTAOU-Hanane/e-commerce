@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('carts', function (Blueprint $table) {
             $table->string('id')->unique();
-            $table->bigInteger('product_id')->unsigned();
+            $table->string('product_id');
             $table->foreign('product_id')->references('id')->on('products');
-            $table->bigInteger('user_id')->unsigned();
+            $table->string('user_id');
             $table->foreign('user_id')->references('id')->on('users');
             $table->boolean('is_paid');
             $table->timestamps();
