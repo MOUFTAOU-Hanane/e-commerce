@@ -319,7 +319,7 @@ public function getProduct(Request $request)
 
 public function getImageUrl($name) {
     try {
-        $baseUrl ="http://127.0.0.1:8000/api/image/";
+        $baseUrl = "/uploads/"; //
         $fileName = storage_path('app/uploads/' . $name);
 
 
@@ -331,7 +331,10 @@ public function getImageUrl($name) {
         throw new Exception('Image non trouvée');
     } catch (\Exception $th) {
         throw $th;
-    }}
+    }
+} //end getImageUrl
+
+
 
 
     public function addCategory(Request $request){

@@ -22,7 +22,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 Route::get('/image/{name}',  [AdminController::class,'getImageUrl']);
 
-
 Route::group(['prefix' => 'auth'], function () {
     //login and register
     Route::post('/register', [UserController::class,'register']);

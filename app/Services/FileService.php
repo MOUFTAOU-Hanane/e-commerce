@@ -37,7 +37,7 @@ class FileService
     //get image url or send a default image
    public function getImageUrl($name) {
     try {
-        $baseUrl ="http://127.0.0.1:8000/image/";
+        $baseUrl ="http://127.0.0.1:8000/api/image/";
         $fileName = storage_path('app/uploads/' . $name);
 
 
