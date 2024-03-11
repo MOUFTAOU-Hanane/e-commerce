@@ -16,16 +16,17 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $id
  * @property string $category_id
  * @property string $name
- * @property string $images
  * @property string $description
  * @property int $in_stock
  * @property int $available_stock
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property int $price
  * 
  * @property Category $category
  * @property Collection|Cart[] $carts
  * @property Collection|Comment[] $comments
+ * @property Collection|ImagesProduct[] $images_products
  *
  * @package App\Models
  */
@@ -36,16 +37,17 @@ class Product extends Model
 
 	protected $casts = [
 		'in_stock' => 'int',
-		'available_stock' => 'int'
+		'available_stock' => 'int',
+		'price' => 'int'
 	];
 
 	protected $fillable = [
 		'category_id',
 		'name',
-		'images',
 		'description',
 		'in_stock',
-		'available_stock'
+		'available_stock',
+		'price'
 	];
 
 	public function category()
@@ -61,5 +63,10 @@ class Product extends Model
 	public function comments()
 	{
 		return $this->hasMany(Comment::class);
+	}
+
+	public function images_products()
+	{
+		return $this->hasMany(ImagesProduct::class);
 	}
 }

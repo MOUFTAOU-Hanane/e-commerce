@@ -33,15 +33,30 @@ class EcommerceController extends Controller
             }
             $name =  $rData['name'];
             $idCategory = Category::where('name',$name)->first();
-            $productFound = Product::where('category', $idCategory->id )->with('comments','category')->get();
+            $productFound = Product::where('category_id', $idCategory->id )->with('comments','category','images_products')->get();
             if ($productFound-> isEmpty()){
                 return [];
             }
 
-            return response()->json([
-                $productFound
+            $formattedProducts = $productFound->map(function ($product) {
+                $images = $product->images_products->pluck('image')->toArray();
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'price' => $product->price,
+                    'in_stock' => $product->in_stock,
+                    'available_stock' => $product->available_stock,
+                    'images' => $images,
+                    'category' => $product->category,
+                    'comments' => $product->comments,
+                ];
+            });
 
-            ], 201);
+            return response()->json(
+                $formattedProducts
+
+            , 200);
 
         }catch(Exception $ex){
             log::error($ex->getMessage());
@@ -56,16 +71,16 @@ class EcommerceController extends Controller
 
     public function addCart(Request $request){
         try{
-            $rData=$request->only(['id','product', 'user']);
+            $rData=$request->only(['id','product', 'user', 'qte']);
             $validator=[
                 'product' => ['required','exists:products,id'],
-                'user' => ['required', 'exists:products,id'],
+                'user' => ['required', 'exists:users,id'],
                 'qte' => ['required'],
 
             ];
             $validationMessages = [
                 'product.required' => "Le nom de produit est requis",
-                'user.required' => "Le prix  du produit est est requis",
+                'user.required' => "La reference de l'utilisateur  est requise",
                 'qte.required' => "Le quantité  du produit est requise",
 
 
@@ -79,7 +94,7 @@ class EcommerceController extends Controller
             }
             $prod =  $rData['product'];
             $user =  $rData['user'];
-            $qte =  $rData['user'];
+            $qte =  $rData['qte'];
 
 
             $cart = new Cart();
@@ -106,12 +121,14 @@ class EcommerceController extends Controller
 
     public function paidProduct(Request $request){
         try{
-            $rData=$request->only(['id']);
+            $rData=$request->only(['id','user']);
             $validator=[
-                'id'=> ['required','exists:products,id'],
+                'product_id'=> ['required','exists:products,id'],
+                'user'=> ['required','exists:users,id'],
             ];
             $validationMessages = [
-                'id.required' => "La reference du produit est requise",
+                'product_id.required' => "La reference du produit est requise",
+                'user.required' => "La reference de l'utilisateur est requise",
             ];
             $validatorResult=Validator::make( $rData, $validator, $validationMessages);
 
@@ -120,10 +137,14 @@ class EcommerceController extends Controller
                     'message' => $validatorResult->errors()->first(),
                 ], 400);
             }
-            $id =  $rData['id'];
+            $id =  $rData['product_id'];
+            $user =  $rData['user'];
+            $cart = Cart::where('user_id', $user)->where('product_id', $id)->first();
+            $qte = $cart->qte;
 
 
             $product = Product::where('id',$id)->first();
+            $product->available_stock -=  $qte;
             $product ->is_paid = true;
             $product ->save();
 
@@ -162,7 +183,7 @@ class EcommerceController extends Controller
             $user =  $rData['user'];
 
 
-            $productsInCart = Cart::where('user',$user)->where('is_paid', false)->with('product')->get();
+            $productsInCart = Cart::where('user_id',$user)->where('is_paid', false)->with('product')->get();
             if ($productsInCart ->isEmpty()){
                 return [];
             }
@@ -170,9 +191,9 @@ class EcommerceController extends Controller
             $products = $productsInCart->pluck('product');
 
 
-            return response()->json([
+            return response()->json(
                 $products
-            ], 201);
+            , 201);
 
         }catch(Exception $ex){
             log::error($ex->getMessage());
@@ -183,6 +204,7 @@ class EcommerceController extends Controller
                 );
         }
     }
+
 
 
 
@@ -208,7 +230,7 @@ class EcommerceController extends Controller
             }
             $user =  $rData['user'];
             $product =  $rData['product'];
-            $deleted = Cart::where('user',$user)->where('product', $product)->delete();
+            $deleted = Cart::where('user_id',$user)->where('product_id', $product)->delete();
             if ($deleted) {
                 return response()->json([
                     "success" => true,
@@ -255,7 +277,7 @@ class EcommerceController extends Controller
             $user =  $rData['user'];
 
 
-            $productsInCart = Cart::where('user',$user)->where('is_paid', true)->with('product')->get();
+            $productsInCart = Cart::where('user_id',$user)->where('is_paid', true)->with('product')->get();
             if ($productsInCart ->isEmpty()){
                 return [];
             }
@@ -263,9 +285,9 @@ class EcommerceController extends Controller
 
 
 
-            return response()->json([
+            return response()->json(
                 $products
-            ], 201);
+            , 201);
 
         }catch(Exception $ex){
             log::error($ex->getMessage());
@@ -304,7 +326,7 @@ class EcommerceController extends Controller
             $user =  $rData['user'];
             $product =  $rData['product'];
 
-            $productPaid = Cart::where('product',$product)->where('user',$user)->where('is_paid',true)->first();
+            $productPaid = Cart::where('product_id',$product)->where('user_id',$user)->where('is_paid',true)->first();
             if ($productPaid){
                 $comment = new Comment();
                 $comment->user_id = $user;
@@ -360,11 +382,26 @@ class EcommerceController extends Controller
             $id =  $rData['id'];
 
 
-            $productFound = Product::where('id',$id)->with('category', 'comments')->get();
+            $productFound = Product::where('id',$id)->with('comments','category','images_products')->get();
 
-            return response()->json([
-                $productFound
-            ], 200);
+            $formattedProducts = $productFound->map(function ($product) {
+                $images = $product->images_products->pluck('image')->toArray();
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'price' => $product->price,
+                    'in_stock' => $product->in_stock,
+                    'available_stock' => $product->available_stock,
+                    'images' => $images,
+                    'category' => $product->category,
+                    'comments' => $product->comments,
+                ];
+            });
+
+            return response()->json(
+                $formattedProducts
+            , 200);
 
         }catch(Exception $ex){
             log::error($ex->getMessage());

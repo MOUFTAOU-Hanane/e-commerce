@@ -9,20 +9,24 @@ use Illuminate\Support\Facades\Hash;
 use Ramsey\Uuid\Uuid;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\ImagesProduct;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
+
+use function Laravel\Prompts\error;
 
 class AdminController extends Controller
 {
     public function addProduct(Request $request){
         try{
-            $rData=$request->only(["users",'name', 'category','price', 'description',"number_in_stock",'images']);
+            $rData=$request->only(["users",'name', 'category','price', 'description',"number_in_stock",'images','user']);
             $validator=[
                 'user' => ['required','exists:users,id'],
                 'name' => ['required'],
                 'price' => ['required'],
                 'category' => ['required', 'exists:categories,id'],
                 'description' => ['required'],
-                'number_in_stock' => ['required','min:8'],
+                'number_in_stock' => ['required'],
             ];
             $validationMessages = [
 
@@ -52,23 +56,11 @@ class AdminController extends Controller
                 $product = new Product();
                 $product->name =  $name ;
                 $product->price =  $price ;
-                $product->category =  $category ;
+                $product->category_id =  $category ;
                 $product->description =  $desc ;
                 $product->in_stock =  $number ;
-                $product->number =  $number ;
+                $product->available_stock =  $number ;
                 $product->id = Uuid::uuid4()->toString();
-
-
-                if ($request->hasFile('images')) {
-                    $images = [];
-                    foreach($request->file('images') as $imageFile){
-                        $image = new FileService();
-                        $image->saveImage($imageFile);
-                        $images[] = $image;
-
-                    } };
-
-                $product->images =  json_encode($images) ;
 
                 $product->save();
 
@@ -76,6 +68,75 @@ class AdminController extends Controller
                     "success" => true,
                     "message" => "Le produIct a été enregistré avec succès.",
                 ], 201);
+
+                }
+
+
+            return response()->json([
+                "message" => "Vous n'avez pas de droit pour effectuer cette action",
+            ],401 );
+
+        }catch(Exception $ex){
+            log::error($ex->getMessage());
+            return response()->json(
+                [
+                    "message"=> "Une erreur est survenue lors de l'enregistrement  d'un produit. Veuillez réessayer",
+                ],400
+                );
+        }
+    }
+    public function addImage(Request $request){
+        try{
+            $rData=$request->only(["user",'product', 'image']);
+            $validator=[
+                'user' => ['required','exists:users,id'],
+                'product' => ['required', 'exists:products,id'],
+
+            ];
+            $validationMessages = [
+                'product.required' => "La référence du produit est requis",
+                'user.exists' => "La reference de l'utilisateur n'existe pas dans la base",
+
+            ];
+            $validatorResult=Validator::make( $rData, $validator, $validationMessages);
+
+            if ($validatorResult->fails()) {
+                return response()->json([
+                    'message' => $validatorResult->errors()->first(),
+                ], 400);
+            }
+            $user =  $rData['user'];
+            $product =  $rData['product'];
+            $userFound = User::where("id",$user)->first();
+
+            if($userFound -> role == 'admin'){
+                $image = new ImagesProduct();
+                $image->product_id =  $product ;
+                $image->id = Uuid::uuid4()->toString();
+
+
+
+                if ($request->hasFile('image')) {
+                    $imageFile = $request->file('image') ;
+                    log::error( $imageFile );
+                    $imageService = new FileService();
+                    $imageUrl = $imageService->saveImage($imageFile);
+                    $image->image =  $imageUrl ;
+                    $image->save();
+
+                return response()->json([
+                    "success" => true,
+                    "message" => "La photo de produit a été enregistré avec succès.",
+                ], 201);
+
+
+
+
+                 }else{
+                    throw new Exception('Veuillez ajouté une image');
+                 }
+
+
 
                 }
 
@@ -226,24 +287,52 @@ class AdminController extends Controller
         }
     }
 
-    public function getProduct(Request $request){
-        try{
 
-            $products = Product::with('category')->all();
+public function getProduct(Request $request)
+{
+    try {
+        $products = Product::with('comments', 'category', 'images_products')->get();
 
-            return response()->json(
-                $products
-            , 201);
+        $formattedProducts = $products->map(function ($product) {
+            $images = $product->images_products->pluck('image')->toArray();
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'price' => $product->price,
+                'in_stock' => $product->in_stock,
+                'available_stock' => $product->available_stock,
+                'images' => $images,
+                'category' => $product->category,
+                'comments' => $product->comments,
+            ];
+        });
 
-        }catch(Exception $ex){
-            log::error($ex->getMessage());
-            return response()->json(
-                [
-                    "message"=> "Une erreur est survenue lors du listing  des produits. Veuillez réessayer",
-                ],400
-                );
-        }
+        return response()->json($formattedProducts, 201);
+    } catch (Exception $ex) {
+        Log::error($ex->getMessage());
+        return response()->json([
+            "message" => "Une erreur est survenue lors du listing des produits. Veuillez réessayer",
+        ], 400);
     }
+}
+
+public function getImageUrl($name) {
+    try {
+        $baseUrl ="http://127.0.0.1:8000/api/image/";
+        $fileName = storage_path('app/uploads/' . $name);
+
+
+        if (Storage::disk('local')->exists($baseUrl .  $name))  {
+
+             return response()->file($fileName);
+        }
+
+        throw new Exception('Image non trouvée');
+    } catch (\Exception $th) {
+        throw $th;
+    }}
+
 
     public function addCategory(Request $request){
         try{
