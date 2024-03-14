@@ -411,6 +411,36 @@ public function getImageUrl($name) {
         }
     }
 
+    public function getProductByLastDate(Request $request)
+{
+    try {
+        $products = Product::orderBy('created_at', 'asc')->with('comments', 'category', 'images_products')->get();
+
+        $formattedProducts = $products->map(function ($product) {
+            $images = $product->images_products->pluck('image')->toArray();
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'price' => $product->price,
+                'in_stock' => $product->in_stock,
+                'available_stock' => $product->available_stock,
+                'images' => $images,
+                'category' => $product->category,
+                'comments' => $product->comments,
+            ];
+        });
+
+        return response()->json($formattedProducts, 201);
+    } catch (Exception $ex) {
+        Log::error($ex->getMessage());
+        return response()->json([
+            "message" => "Une erreur est survenue lors du listing des produits. Veuillez réessayer",
+        ], 400);
+    }
+}
+
+
 
     public function deleteCategory(Request $request){
         try{

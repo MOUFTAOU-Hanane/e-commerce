@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class User
- * 
+ *
  * @property string $id
  * @property string $first_name
  * @property string $last_name
@@ -23,7 +23,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string $localisation
- * 
+ *
  * @property Collection|Cart[] $carts
  * @property Collection|Comment[] $comments
  *
@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class User extends Model
 {
+
 	protected $table = 'users';
 	public $incrementing = false;
 

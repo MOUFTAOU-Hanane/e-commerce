@@ -137,6 +137,7 @@ class UserController extends Controller
     }
 
 
+
     public function changePassword(Request $request){
         try{
             $rData=$request->only(['email', "new-password"]);

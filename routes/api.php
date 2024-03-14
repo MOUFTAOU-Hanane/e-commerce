@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+
 Route::get('/image/{name}',  [AdminController::class,'getImageUrl']);
 
 Route::group(['prefix' => 'auth'], function () {
@@ -47,6 +49,7 @@ Route::group(['prefix' => 'dashboard'], function () {
 Route::group(['prefix' => 'commerce'], function () {
     //login and register
     Route::get('/products', [AdminController::class,'getProduct']);
+    Route::get('/last-products', [AdminController::class,'getProductByLastDate']);
     Route::post('/add-cart', [EcommerceController::class,'addCart']);
     Route::post('/paid-product', [EcommerceController::class,'  ']);
     Route::post('/product-in-cart', [EcommerceController::class,'getProductInCart']);
